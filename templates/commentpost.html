@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <form method="post">
+        <div class="post-heading">
+            <div class="post-info">
+                Blog Id: {{rowid}} Blog Owner: {{owner}} Likes: {{likes}} UnLikes: {{unlikes}}
+            </div>
+            <div class="post-title">
+                {{subject}}
+            </div>
+        </div>
+        <div class="post-content">
+            {{content | safe}}
+        </div>
+        <label>
+            <div>Comment</div>
+        <textarea name="comment">{{comment}}</textarea>
+      </label>
+
+        <input type="submit" value="Add Comment">
+    </form>
+{% endblock %}
