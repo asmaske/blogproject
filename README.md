@@ -41,6 +41,8 @@ example: https://ash-blogproject.appspot.com/blog/deletepost/1
 #### Note
 
  - Because sometime updates are cached, the change may not be visible. Press refresh button to see the changes. 
+ - Test data created with two users
+ - Some message and errors are reported on a separate page
 
 ### Tech
 
