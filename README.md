@@ -2,7 +2,7 @@
 
 Blog project is a Python based web project to maintain blog posts.
 
-### Running the application on Google App Engine
+### Running the application on Google App Engine (Cloud)
 1. The application is available on google app engine
 2. The application has following features:
  + View blogs listing
@@ -53,18 +53,21 @@ Portfolio Website uses the following software:
 
 ## Project Details
 
-### Installation
+### Running the application with Google App Engine (Local machine)
 #### 1. Python
 + Download and install the stable version of **Python 2.7**
 + Add Python executables location to the PATH environment variable.
-+ execute **pip2.7.exe install webapp2**
-+ execute **pip2.7.exe install jinja2**
-+ execute **pip2.7.exe install google**
-#### 2. BlogProject application
+#### 2. Google App Engine
++ Download and install the App Engine SDK for Python from **https://cloud.google.com/appengine/docs/python/download**
+#### 3. BlogProject application
 + Clone/copy the **BlogProject** source files to a local directory
 #### 4. Running the application
-+ Change directory to the application source directory
-+ Run application **python blog.py**
++ Launch Google App Engine by running **install_location\google_appengine\launcher\GoogleAppEngineLauncher.exe**
++ Under **File** menu option select **Select Add Existing Application**
++ In **Application Path**, browse to the location of **BlogProject** directory and click **Add**
++ On the launcher, select project name and click **Run**
++ Click the **Browse** icon to launch the app in the browser
++ To view blogs, type **http://localhost:8080/blog**
 #### 3. Application Directory Structure
 * BlogProject
     + README.md

@@ -450,6 +450,15 @@ class EditPage(BlogHandler):
         ep_content = self.request.get('content')
         ep_post = Post.by_rowid(int(post_id))
         if ep_post:
+            # make sure the owner is saving the edit
+            if ep_post.owner != self.user.name:
+                msg =\
+                    'Post id %s: ' \
+                    'You are not the owner of the post so cannot edit'\
+                    % post_id
+                self.render('errorpost.html', error=msg)
+                return
+
             # save record to database
             ep_post.subject = ep_subject
             ep_post.content = ep_content
@@ -491,6 +500,14 @@ class CommentPage(BlogHandler):
         comment = self.request.get('comment')
         cp_post = Post.by_rowid(int(post_id))
         if cp_post:
+            # make sure the owner is not saving the comment
+            if cp_post.owner == self.user.name:
+                msg =\
+                    'Post id %s: ' \
+                    'You are the owner of the post so cannot comment on it'\
+                    % post_id
+                self.render('errorpost.html', error=msg)
+                return
             # save comment to database
             insert_new_comment(int(post_id), comment)
             self.redirect('/blog/%s' % post_id)
@@ -531,6 +548,14 @@ class DeletePage(BlogHandler):
 
         dp_post = Post.by_rowid(int(post_id))
         if dp_post:
+            # check if it is owner before deleting
+            if dp_post.owner != self.user.name:
+                msg =\
+                    'Post id %s:' \
+                    'You are not the owner of the post so cannot delete'\
+                    % post_id
+                self.render('errorpost.html', error=msg)
+                return
             dp_post.delete()
             msg = 'Post successfully deleted'
             self.render('messagepost.html', message=msg)
