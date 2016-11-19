@@ -113,8 +113,20 @@ class Post(db.Model):
 
 
 class Comment(db.Model):
+    commentid = db.IntegerProperty(required=True)
     rowid = db.IntegerProperty(required=True)
+    username = db.StringProperty(required=True)
     comment = db.StringProperty(required=True)
+
+    @classmethod
+    def by_commentid(cls, commentid):
+        c = Comment.all().filter('commentid =', commentid).get()
+        return c
+
+    @classmethod
+    def all_order_by_commentid(cls):
+        c = Comment.all().order('-rowid').get()
+        return c
 
     @classmethod
     def all_by_rowid_order_by_rowid(cls, rowid):
@@ -329,16 +341,18 @@ def insert_new_post(p_subject, p_content, p_owner, p_rowid):
 
 
 @db.transactional
-def insert_new_comment(p_rowid, p_comment):
+def insert_new_comment(p_commentid, p_rowid, p_username, p_comment):
     """
         insert_new_comment: insert row in Comment table
         Args:
+            p_commentid (data type: int): comment id
             p_rowid (data type: int): row id
+            p_username (data type: str): username
             p_comment (data type: str): comment
         Returns:
             null
         """
-    nc_p = Comment(parent=blog_key(), rowid=p_rowid, comment=p_comment)
+    nc_p = Comment(parent=blog_key(), commentid=p_commentid, rowid=p_rowid, username=p_username, comment=p_comment)
     nc_p.put()
 
 
@@ -368,7 +382,7 @@ class PostPage(BlogHandler):
         # dummy call to force insert commit
         p2 = Post.all_order_by_rowid()
 
-        # get all rows for a post
+        # get all data for a post
         pp = Post.by_rowid(int(post_id))
         if pp:
             pp_post = Post(parent=blog_key(), subject=pp.subject,
@@ -383,7 +397,11 @@ class PostPage(BlogHandler):
             for i in comment_cur.run():
                 # create list of comments for a post
                 if i.rowid == int(post_id):
-                    comment_list.append(i.comment)
+                    comment_list.append(str(i.commentid)
+                                        + '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'
+                                        + i.username
+                                        + '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'
+                                        + i.comment)
             # iterate thru list to create html code
             for i, val in enumerate(comment_list):
                 result += val + '<br>'
@@ -438,7 +456,11 @@ class EditPage(BlogHandler):
                 for i in comment_cur.run():
                     # create list of comments for a post
                     if i.rowid == int(post_id):
-                        comment_list.append(i.comment)
+                        comment_list.append(str(i.commentid)
+                                            + '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'
+                                            + i.username
+                                            + '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'
+                                            + i.comment)
                 # iterate thru list to create html code
                 for i, val in enumerate(comment_list):
                     result += val + '<br>'
@@ -465,55 +487,6 @@ class EditPage(BlogHandler):
             ep_post.put()
             posts = Post.all().order('-created')
             self.render('front.html', posts=posts)
-
-
-class CommentPage(BlogHandler):
-    def get(self, post_id):
-        # return if user not logged in
-        if self.user is None:
-            self.redirect("/login")
-            return
-
-        # get data for the post id
-        cp_get = Post.by_rowid(int(post_id))
-        if cp_get:
-            if cp_get.owner == self.user.name:
-                msg =\
-                    'Post id %s: ' \
-                    'You are the owner of the post so cannot comment on it'\
-                    % post_id
-                self.render('errorpost.html', error=msg)
-                return
-            self.render("commentpost.html", rowid=cp_get.rowid,
-                        owner=cp_get.owner, subject=cp_get.subject,
-                        content=cp_get.content, likes=cp_get.likes,
-                        unlikes=cp_get.unlikes)
-        else:
-            msg = 'Post id %s not found' % post_id
-            self.render('errorpost.html', error=msg)
-
-    def post(self, post_id):
-        if self.user.name is None:
-            self.redirect("/login")
-            return
-
-        comment = self.request.get('comment')
-        cp_post = Post.by_rowid(int(post_id))
-        if cp_post:
-            # make sure the owner is not saving the comment
-            if cp_post.owner == self.user.name:
-                msg =\
-                    'Post id %s: ' \
-                    'You are the owner of the post so cannot comment on it'\
-                    % post_id
-                self.render('errorpost.html', error=msg)
-                return
-            # save comment to database
-            insert_new_comment(int(post_id), comment)
-            self.redirect('/blog/%s' % post_id)
-        else:
-            msg = 'Post id %s not found' % post_id
-            self.render('errorpost.html', error=msg)
 
 
 class DeletePage(BlogHandler):
@@ -557,6 +530,15 @@ class DeletePage(BlogHandler):
                 self.render('errorpost.html', error=msg)
                 return
             dp_post.delete()
+
+            # also delete child records from Comment and UserLikeUnlike tables for this post
+            dpc_post = Comment.by_rowid(int(post_id))
+            if dpc_post:
+                dpc_post.delete()
+            dpu_post = UserLikeUnlike.by_rowid(int(post_id))
+            if dpu_post:
+                dpc_post.delete()
+
             msg = 'Post successfully deleted'
             self.render('messagepost.html', message=msg)
         else:
@@ -632,6 +614,160 @@ class LikeUnlikePage(BlogHandler):
             self.render('front.html', posts=posts)
 
 
+class CommentPage(BlogHandler):
+    def get(self, post_id):
+        # return if user not logged in
+        if self.user is None:
+            self.redirect("/login")
+            return
+
+        # get data for the post id
+        cp_get = Post.by_rowid(int(post_id))
+        if cp_get:
+            if cp_get.owner == self.user.name:
+                msg =\
+                    'Post id %s: ' \
+                    'You are the owner of the post so cannot comment on it'\
+                    % post_id
+                self.render('errorpost.html', error=msg)
+                return
+            self.render("commentpost.html", rowid=cp_get.rowid,
+                        owner=cp_get.owner, subject=cp_get.subject,
+                        content=cp_get.content, likes=cp_get.likes,
+                        unlikes=cp_get.unlikes)
+        else:
+            msg = 'Post id %s not found' % post_id
+            self.render('errorpost.html', error=msg)
+
+    def post(self, post_id):
+        if self.user.name is None:
+            self.redirect("/login")
+            return
+
+        comment = self.request.get('comment')
+        cp_post = Post.by_rowid(int(post_id))
+        if cp_post:
+            # make sure the owner is not saving the comment
+            if cp_post.owner == self.user.name:
+                msg =\
+                    'Post id %s: ' \
+                    'You are the owner of the post so cannot comment on it'\
+                    % post_id
+                self.render('errorpost.html', error=msg)
+                return
+
+            last_commid = 0
+            # get last commentid value
+            c = Comment.all_order_by_commentid()
+            if c:
+                last_commid = c.commentid
+            # save comment to database
+            insert_new_comment(last_commid+1, int(post_id), self.user.name, comment)
+            self.redirect('/blog/%s' % post_id)
+        else:
+            msg = 'Post id %s not found' % post_id
+            self.render('errorpost.html', error=msg)
+
+
+class EditDeleteComment(BlogHandler):
+    def get(self, comment_id):
+        # return if user not logged in
+        if self.user is None:
+            self.redirect("/login")
+            return
+
+        # get data for the comment id
+        edc_get = Comment.by_commentid(int(comment_id))
+        if edc_get:
+            # get all data for a post
+            pp = Post.by_rowid(edc_get.rowid)
+            if pp:
+                self.render("editdeletecomment.html", subject=pp.subject,
+                            content=pp.content, owner=pp.owner,
+                            rowid=pp.rowid, likes=pp.likes,
+                            unlikes=pp.unlikes, comment=edc_get.comment)
+        else:
+            msg = 'Comment id %s not found' % comment_id
+            self.render('errorpost.html', error=msg)
+
+    def post(self, comment_id):
+        if self.user.name is None:
+            self.redirect("/login")
+            return
+
+        # return if user clicks cancel button and display post page
+        response = self.request.get('cancel')
+        if response == 'Cancel':
+            # get data for the comment id
+            edccan_post = Comment.by_commentid(int(comment_id))
+            if edccan_post:
+                rowid = edccan_post.rowid
+
+            pp = Post.by_rowid(rowid)
+            if pp:
+                pp_post = Post(parent=blog_key(), subject=pp.subject,
+                               content=pp.content, owner=pp.owner,
+                               rowid=rowid, likes=pp.likes,
+                               unlikes=pp.unlikes)
+                comment_list = []
+
+                # get all comments
+                comment_cur = Comment.all()
+                result = ''
+                for i in comment_cur.run():
+                    # create list of comments for a post
+                    if i.rowid == rowid:
+                        comment_list.append(i.comment)
+                # iterate thru list to create html code
+                for i, val in enumerate(comment_list):
+                    result += val + '<br>'
+                self.render("permalink.html", post=pp_post, comment=result)
+                return
+
+        # save edited comment if user clicks save button and display post page
+        response = self.request.get('save')
+        if response == 'Save':
+            # get edited data
+            edc_comment = self.request.get('comment')
+
+            # get data for the comment id
+            edcsav_post = Comment.by_commentid(int(comment_id))
+            if edcsav_post:
+                # make sure the comment owner is saving the edit
+                if edcsav_post.username != self.user.name:
+                    msg = \
+                        'Comment id %s: ' \
+                        'You are not the owner of the comment so cannot edit' \
+                        % comment_id
+                    self.render('errorpost.html', error=msg)
+                    return
+                # save record to database
+                edcsav_post.comment = edc_comment
+                edcsav_post.put()
+                posts = Post.all().order('-created')
+                self.render('front.html', posts=posts)
+
+        # delete comment if user clicks delete button and display post page
+        response = self.request.get('delete')
+        if response == 'Delete':
+            edcdel_post = Comment.by_commentid(int(comment_id))
+            if edcdel_post:
+                # check if it is owner of comment before deleting
+                if edcdel_post.username != self.user.name:
+                    msg = \
+                        'Post id %s:' \
+                        'You are not the owner of the comment so cannot delete' \
+                        % comment_id
+                    self.render('errorpost.html', error=msg)
+                    return
+                edcdel_post.delete()
+                msg = 'Comment successfully deleted'
+                self.render('messagepost.html', message=msg)
+            else:
+                msg = 'Comment id %s not found' % comment_id
+                self.render('errorpost.html', error=msg)
+
+
 class NewPost(BlogHandler):
     def get(self):
         if self.user:
@@ -674,6 +810,8 @@ app = webapp2.WSGIApplication([('/', MainPage),
                                ('/blog/deletepost/([0-9]+)', DeletePage),
                                ('/blog/likeunlikepost/([0-9]+)',
                                 LikeUnlikePage),
+                               ('/blog/editdeletecomment/([0-9]+)',
+                                EditDeleteComment),
                                ('/signup', Register),
                                ('/login', Login),
                                ('/logout', Logout),

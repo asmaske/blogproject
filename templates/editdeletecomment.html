@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h2>Edit/Delete Comment</h2>
+
+    <form method="post">
+        <div class="post-heading">
+            <div class="post-info">
+                Blog Id: {{rowid}} Blog Owner: {{owner}} Likes: {{likes}} UnLikes: {{unlikes}}
+            </div>
+            <div class="post-title">
+                {{subject}}
+            </div>
+        </div>
+        <div class="post-content">
+            {{content | safe}}
+        </div>
+        <label>
+            <div>Comment</div>
+        <textarea name="comment">{{comment}}</textarea>
+      </label>
+
+      <input type="submit" name="save" value="Save">
+      <input type="submit" name="delete" value="Delete">
+      <input type="submit" name="cancel" value="Cancel">
+    </form>
+{% endblock %}
